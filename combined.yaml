@@ -1,0 +1,158 @@
+# PersistentVolumeClaim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: database-pvc
+  namespace: build-something-william
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+
+
+################
+### Database ###
+################
+
+# Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: database-deployment
+  namespace: build-something-william
+  labels:
+    app: database
+    tier: frontend
+spec:
+  selector:
+    matchLabels:
+      app: database
+  template:
+    metadata:
+      labels:
+        app: database
+    spec:
+      containers:
+      - name: database
+        image: knusse/build-something:database
+        ports:
+        - containerPort: 7500
+        volumeMounts:
+        - name: database-storage
+          mountPath: /storage
+      volumes:
+      - name: database-storage
+        persistentVolumeClaim:
+          claimName: database-pvc
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: database-service
+  namespace: build-something-william
+  labels:
+    app: database
+spec:
+  selector:
+    app: database
+  ports:
+  - port: 7500
+    targetPort: 7500
+    protocol: TCP
+  type: ClusterIP
+  
+################
+### indexpod ###
+################
+
+# Development
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: index-deployment
+  namespace: build-something-william
+  labels:
+    app: index
+    tier: frontend
+spec:
+  selector:
+    matchLabels:
+      app: index
+  template:
+    metadata:
+      labels:
+        app: index
+    spec:
+      containers:
+      - name: index
+        image: knusse/build-something:indexpod
+        ports:
+        - containerPort: 7700
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: index-service
+  namespace: build-something-william
+  labels:
+    app: index
+spec:
+  selector:
+    app: index
+  ports:
+  - port: 7700
+    targetPort: 7700
+    nodePort: 30077
+    protocol: TCP
+  type: NodePort
+  
+  
+################
+### Videopod ###
+################
+
+# Development
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: video-deployment
+  namespace: build-something-william
+  labels:
+    app: video
+    tier: frontend
+spec:
+  selector:
+    matchLabels:
+      app: video
+  template:
+    metadata:
+      labels:
+        app: video
+    spec:
+      containers:
+      - name: video
+        image: knusse/build-something:videopod
+        ports:
+        - containerPort: 7600
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: video-service
+  namespace: build-something-william
+  labels:
+    app: video
+spec:
+  selector:
+    app: video
+  ports:
+  - port: 7600
+    targetPort: 7600
+    protocol: TCP
+    nodePort: 30076
+  type: NodePort
