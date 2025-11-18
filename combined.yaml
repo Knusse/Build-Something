@@ -1,22 +1,19 @@
-# PersistentVolumeClaim
+################
+### Database ###
+################
+
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: database-pvc
   namespace: build-something-william
 spec:
-  accessModes:
-    - ReadWriteOnce
+  accessModes: ["ReadWriteOnce"]
   resources:
     requests:
       storage: 2Gi
-
-
-################
-### Database ###
-################
-
-# Deployment
+---
+# Database Deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -26,6 +23,7 @@ metadata:
     app: database
     tier: frontend
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app: database
@@ -34,6 +32,13 @@ spec:
       labels:
         app: database
     spec:
+      initContainers:
+      - name: init-copy-data
+        image: knusse/build-something:database
+        command: ["sh", "-c", "cp -rn /app/storage/* /app/data/"]
+        volumeMounts:
+        - name: database-storage
+          mountPath: /app/data
       containers:
       - name: database
         image: knusse/build-something:database
@@ -41,13 +46,13 @@ spec:
         - containerPort: 7500
         volumeMounts:
         - name: database-storage
-          mountPath: /storage
+          mountPath: /app/data
       volumes:
       - name: database-storage
         persistentVolumeClaim:
           claimName: database-pvc
 ---
-# Service
+# Database Service
 apiVersion: v1
 kind: Service
 metadata:
@@ -63,12 +68,12 @@ spec:
     targetPort: 7500
     protocol: TCP
   type: ClusterIP
-  
+
 ################
 ### indexpod ###
 ################
-
-# Development
+---
+# Deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -109,13 +114,12 @@ spec:
     nodePort: 30077
     protocol: TCP
   type: NodePort
-  
-  
+---
 ################
 ### Videopod ###
 ################
 
-# Development
+# Deployment 
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -153,6 +157,6 @@ spec:
   ports:
   - port: 7600
     targetPort: 7600
-    protocol: TCP
     nodePort: 30076
+    protocol: TCP
   type: NodePort

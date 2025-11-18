@@ -1,10 +1,13 @@
 import sqlite3
 import base64
+import sys
 from flask import Flask, Response, jsonify
+
+DATA_PATH = "/storage"
 
 app = Flask(__name__)
 def insert_video(name, path_thumbnail, path_video):
-    conn = sqlite3.connect('/storage/database.db')
+    conn = sqlite3.connect(f"{DATA_PATH}/database.db")
     cursor = conn.cursor()
     cursor.execute(
         '''
@@ -24,7 +27,7 @@ def insert_placeholders():
     insert_video("city", "storage/thumbnails/city", "storage/videos/city")
 
 def initdb():
-    conn = sqlite3.connect('/storage/database.db')
+    conn = sqlite3.connect(f"{DATA_PATH}/database.db")
     cursor = conn.cursor()
 
     cursor.execute(
@@ -37,7 +40,6 @@ def initdb():
     )
     '''
     )
-
     conn.commit()
     cursor.close()
     conn.close()
@@ -46,9 +48,8 @@ def initdb():
 # Get a video file / thumbnail
 @app.route('/video/<string:video_name>/<string:resource>', methods=['GET'])
 def request_video_resource(video_name, resource):
-    conn = sqlite3.connect('/storage/database.db')
+    conn = sqlite3.connect(f"{DATA_PATH}/database.db")
     cursor = conn.cursor()
-
     if resource == "video": # Returns the video file
         cursor.execute('SELECT path_video FROM videos WHERE name = ?', (video_name,))
         row = cursor.fetchone()
@@ -99,5 +100,7 @@ def request_video_resource(video_name, resource):
         return jsonify({'error': 'Resource type invalid'}), 404
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        DATA_PATH = sys.argv[1]
     initdb()
     app.run(debug=True, host="0.0.0.0", port=7500)
